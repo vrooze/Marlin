@@ -77,6 +77,26 @@
 #define NO_CONTROLLER_CUSTOM_WIRING_WARNING //  RX/TX need to be on TFT
 #define DIAG_JUMPERS_REMOVED  // Not using Sensorless Homing
 
+// MRisoC custom defines for pro ui
+
+#define HAS_GCODE_PREVIEW 1
+#define HAS_CUSTOM_COLORS 1
+#define HAS_ESDIAG 1
+#define HAS_LOCKSCREEN 1
+#define MESH_EDIT_MENU
+#define SHOW_REAL_POS
+#define PLR_TUNE_ITEM
+#define JD_TUNE_ITEM  // Enable only if Juntion Deviation is enabled
+#define ADVK_TUNE_ITEM  // Enable only if Linear Advance is enabled
+#define MEDIASORT_MENU_ITEM  // Allows enable/disable file list sorting
+#define ZHOME_BEFORE_LEVELING  // Home axes before a leveling operation
+#define SMOOTH_ENCODER_MENUITEMS  // Menu items value faster/smooth change rate
+#define SHOW_SPEED_IND // Show the axes speed in mm/s intermittently with the speed percentage
+#define NO_BLINK_IND  // Disables dashboard icon background blink indicator
+//#define DWIN_DISPLAY  // default display
+#define DACAI_DISPLAY  // enables alternative preview API code
+//#define TJC_DISPLAY  // Fix fonts and line drawing issues
+
 /**
  * Select the serial port on the board to use for communication with the host.
  * This allows the connection of wireless adapters (for instance) to non-default port pins.
@@ -2176,7 +2196,7 @@
 #endif
 
 // Add a menu item to move between bed corners for manual bed adjustment
-//#define LCD_BED_TRAMMING
+#define LCD_BED_TRAMMING
 
 #if ENABLED(LCD_BED_TRAMMING)
   #define BED_TRAMMING_INSET_LFRB { 30, 30, 30, 30 } // (mm) Left, Front, Right, Back insets
