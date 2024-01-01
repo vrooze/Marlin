@@ -35,12 +35,8 @@
 #include "../common/encoder.h"
 #include "../common/limits.h"
 #include "../../../libs/BL24CXX.h"
-
-#if ANY(BABYSTEPPING, HAS_BED_PROBE)
-  #define HAS_ZOFFSET_ITEM 1
-  #if !HAS_BED_PROBE
-    #define JUST_BABYSTEP 1
-  #endif
+#if ENABLED(LED_CONTROL_MENU)
+  #include "../../../feature/leds/leds.h"
 #endif
 
 namespace GET_LANG(LCD_LANGUAGE) {
@@ -71,6 +67,7 @@ enum processID : uint8_t {
   ID_WaitResponse,
   ID_Homing,
   ID_PIDProcess,
+  ID_PlotProcess,
   ID_MPCProcess,
   ID_NothingToDo
 };
@@ -138,9 +135,12 @@ typedef struct {
   #if ENABLED(BAUD_RATE_GCODE)
     bool baud115K = false;
   #endif
-
-  bool fullManualTramming = false;
-  bool mediaSort = true;
+  #if ALL(LCD_BED_TRAMMING, HAS_BED_PROBE)
+    bool fullManualTramming = false;
+  #endif
+  #if ENABLED(PROUI_MEDIASORT)
+    bool mediaSort = true;
+  #endif
   bool mediaAutoMount = ENABLED(HAS_SD_EXTENDER);
   #if ALL(INDIVIDUAL_AXIS_HOMING_SUBMENU, MESH_BED_LEVELING)
     uint8_t zAfterHoming = DEF_Z_AFTER_HOMING;
@@ -148,20 +148,37 @@ typedef struct {
   #if ALL(LED_CONTROL_MENU, HAS_COLOR_LEDS)
     LEDColor ledColor = defColorLeds;
   #endif
-  bool adaptiveStepSmoothing = true;
-  bool enablePreview = true;
+  #if ENABLED(ADAPTIVE_STEP_SMOOTHING)
+    bool adaptiveStepSmoothing = true;
+  #endif
+  #if HAS_GCODE_PREVIEW
+    bool enablePreview = true;
+  #endif
 } hmi_data_t;
 
 extern hmi_data_t hmiData;
 static constexpr size_t eeprom_data_size = sizeof(hmi_data_t);
 
 typedef struct {
-  int8_t Color[3];                    // Color components
+  int8_t r, g, b;
+  void set(int8_t _r, int8_t _g, int8_t _b) { r = _r; g = _g; b = _b; }
+  int8_t& operator[](const int i) {
+    switch (i) {
+      default:
+      case 0: return r;
+      case 1: return g;
+      case 2: return b;
+    }
+  }
+} rgb_t;
+
+typedef struct {
+  rgb_t color;                        // Color
   #if ANY(PROUI_PID_TUNE, MPCTEMP)
     tempcontrol_t tempControl = AUTOTUNE_DONE;
   #endif
-  uint8_t select          = 0;        // Auxiliary selector variable
-  AxisEnum axis           = X_AXIS;   // Axis Select
+  uint8_t select = 0;                 // Auxiliary selector variable
+  AxisEnum axis = X_AXIS;             // Axis Select
 } hmi_value_t;
 
 typedef struct {
@@ -212,8 +229,12 @@ void doCoolDown();
 #if HAS_LCD_BRIGHTNESS
   void turnOffBacklight();
 #endif
-void applyExtMinT();
-void parkHead();
+#if ENABLED(PREVENT_COLD_EXTRUSION)
+  void applyExtMinT();
+#endif
+#if ENABLED(NOZZLE_PARK_FEATURE)
+  void parkHead();
+#endif
 #if HAS_ONESTEP_LEVELING
   void trammingwizard();
 #endif
@@ -225,9 +246,6 @@ void parkHead();
   void ublMeshSave();
   void ublMeshLoad();
 #endif
-#if ENABLED(HOST_SHUTDOWN_MENU_ITEM) && defined(SHUTDOWN_ACTION)
-  void hostShutDown();
-#endif
 #if DISABLED(HAS_BED_PROBE)
   void homeZAndDisable();
 #endif
@@ -238,7 +256,7 @@ void gotoMainMenu();
 void gotoInfoMenu();
 void gotoPowerLossRecovery();
 void gotoConfirmToPrint();
-void dwinDrawDashboard(const bool with_update); // Status Area
+void dwinDrawDashboard(); // Status Area
 void drawMainArea();      // Redraw main area
 void dwinDrawStatusLine(const char *text = ""); // Draw simple status text
 void dwinRedrawDash();     // Redraw Dash and Status line
@@ -291,14 +309,8 @@ void dwinRebootScreen();
 #if HAS_MESH
   void dwinMeshViewer();
 #endif
-#if HAS_GCODE_PREVIEW
-  void hmiConfirmToPrint();
-#endif
 #if HAS_ESDIAG
   void drawEndStopDiag();
-#endif
-#if ENABLED(PRINTCOUNTER)
-  void drawPrintStats();
 #endif
 
 // Menu drawing functions
@@ -315,10 +327,6 @@ void drawTrammingMenu();
   void drawProbeSetMenu();
 #endif
 void drawFilSetMenu();
-#if ENABLED(NOZZLE_PARK_FEATURE)
-  void drawParkPosMenu();
-#endif
-void drawPhySetMenu();
 #if ALL(CASE_LIGHT_MENU, CASELIGHT_USES_BRIGHTNESS)
   void drawCaseLightMenu();
 #endif
@@ -327,16 +335,14 @@ void drawPhySetMenu();
 #endif
 void drawTuneMenu();
 void drawMotionMenu();
-#if ENABLED(ADVANCED_PAUSE_FEATURE)
-  void drawFilamentManMenu();
-#endif
+void drawFilamentManMenu();
 #if ENABLED(MESH_BED_LEVELING)
   void drawManualMeshMenu();
 #endif
 void drawTemperatureMenu();
 void drawMaxSpeedMenu();
 void drawMaxAccelMenu();
-#if HAS_CLASSIC_JERK
+#if ENABLED(CLASSIC_JERK)
   void drawMaxJerkMenu();
 #endif
 void drawStepsMenu();
@@ -351,7 +357,7 @@ void drawStepsMenu();
 #endif
 #if HAS_MESH
   void drawMeshSetMenu();
-  #if ENABLED(MESH_EDIT_MENU)
+  #if ENABLED(PROUI_MESH_EDIT)
     void drawEditMeshMenu();
   #endif
 #endif
@@ -371,6 +377,9 @@ void drawStepsMenu();
   #include "../../../module/temperature.h"
   void dwinStartM303(const bool seenC, const int c, const bool seenS, const heater_id_t hid, const celsius_t temp);
   void dwinPidTuning(tempcontrol_t result);
+  #if PROUI_TUNING_GRAPH
+    void dwinDrawPIDMPCPopup();
+  #endif
 #endif
 #if ENABLED(PIDTEMP)
   #if ENABLED(PID_AUTOTUNE_MENU)
@@ -390,9 +399,11 @@ void drawStepsMenu();
 #endif
 
 // MPC
-#if ANY(MPC_EDIT_MENU, MPC_AUTOTUNE_MENU)
-  void drawHotendMPCMenu();
-#endif
-#if ENABLED(MPC_AUTOTUNE)
-  void dwinMPCTuning(tempcontrol_t result);
+#if ENABLED(MPCTEMP)
+  #if ANY(MPC_EDIT_MENU, MPC_AUTOTUNE_MENU)
+    void drawHotendMPCMenu();
+  #endif
+  #if ENABLED(MPC_AUTOTUNE)
+    void dwinMPCTuning(tempcontrol_t result);
+  #endif
 #endif
