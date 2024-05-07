@@ -77,6 +77,7 @@
 
 // MRisoC custom defines for pro ui
 
+/*
 #define HAS_GCODE_PREVIEW 1
 #define HAS_CUSTOM_COLORS 1
 #define HAS_ESDIAG 1
@@ -94,6 +95,7 @@
 //#define DWIN_DISPLAY  // default display
 #define DACAI_DISPLAY  // enables alternative preview API code
 //#define TJC_DISPLAY  // Fix fonts and line drawing issues
+*/
 
 /**
  * Select the serial port on the board to use for communication with the host.
